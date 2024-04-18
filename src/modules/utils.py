@@ -9,10 +9,22 @@ import sys
 import threading
 from collections import OrderedDict, Counter
 from typing import Optional, Union, Literal, Any, List
-
+from huggingface_hub import hf_hub_download
+import joblib
 import toml
-
+from langchain_community.llms import LlamaCpp
+from langchain.callbacks.manager import CallbackManager
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.prompts import PromptTemplate
+from langchain.schema.output_parser import StrOutputParser
+from typing import Any, Dict, List, Optional
+import os
 import dspy
+REPO_ID = "TheBloke/Llama-2-7b-Chat-GGUF"
+FILENAME = "llama-2-7b-chat.Q4_K_M.gguf"
+CACHE_DIR="."
+model = hf_hub_download(repo_id=REPO_ID, filename=FILENAME,
+                    cache_dir=CACHE_DIR)
 
 
 class MyOpenAIModel(dspy.OpenAI):
@@ -105,6 +117,22 @@ class MyOpenAIModel(dspy.OpenAI):
         return completions
 
 
+def llm_init():
+    """ Load large language model """
+    global llm, callback_manager,FILENAME,CACHE_DIR
+    model_file=os.path.join(CACHE_DIR,'models--TheBloke--Llama-2-7b-Chat-GGUF')
+    
+    
+    llm = LlamaCpp(
+        model_path=model,
+        temperature=0.1,
+        n_gpu_layers=0,
+        n_batch=256,
+        callback_manager=callback_manager,
+        verbose=True,
+    )
+
+
 class LLMConfigs:
     """Configurations for LLM used in different parts of STORM.
 
@@ -120,52 +148,23 @@ class LLMConfigs:
         self.article_gen_lm = None  # LLM used in article generation.
         self.article_polish_lm = None  # LLM used in article polishing.
 
-    def init_openai_model(
+    def init(
             self,
-            openai_api_key: str,
-            openai_type: Literal["openai", "azure"],
-            api_base: Optional[str] = None,
-            api_version: Optional[str] = None,
             temperature: Optional[float] = 1.0,
             top_p: Optional[float] = 0.9
     ):
-        openai_kwargs = {
-            'api_key': openai_api_key,
-            'api_provider': openai_type,
-            'temperature': temperature,
-            'top_p': top_p,
-            'api_base': None,
-            'api_version': None,
-        }
-        if openai_type and openai_type == 'azure':
-            openai_kwargs['api_base'] = api_base
-            openai_kwargs['api_version'] = api_version
 
-            self.conv_simulator_lm = MyOpenAIModel(model='gpt-35-turbo-instruct', engine='gpt-35-turbo-instruct',
-                                                   max_tokens=500, **openai_kwargs)
-            self.question_asker_lm = MyOpenAIModel(model='gpt-35-turbo', engine='gpt-35-turbo',
-                                                   max_tokens=500, **openai_kwargs)
-            self.outline_gen_lm = MyOpenAIModel(model='gpt-4', engine='gpt-4',
-                                                max_tokens=400, **openai_kwargs)
-            self.article_gen_lm = MyOpenAIModel(model='gpt-4', engine='gpt-4',
-                                                max_tokens=700, **openai_kwargs)
-            self.article_polish_lm = MyOpenAIModel(model='gpt-4-32k', engine='gpt-4-32k',
-                                                   max_tokens=4000, **openai_kwargs)
-        elif openai_type and openai_type == 'openai':
-            self.conv_simulator_lm = MyOpenAIModel(model='gpt-3.5-turbo-instruct',
-                                                   max_tokens=500, **openai_kwargs)
-            self.question_asker_lm = MyOpenAIModel(model='gpt-3.5-turbo',
-                                                   max_tokens=500, **openai_kwargs)
-            # 1/12/2024: Update gpt-4 to gpt-4-1106-preview. (Currently keep the original setup when using azure.)
-            self.outline_gen_lm = MyOpenAIModel(model='gpt-4-0125-preview',
-                                                max_tokens=400, **openai_kwargs)
-            self.article_gen_lm = MyOpenAIModel(model='gpt-4-0125-preview',
-                                                max_tokens=700, **openai_kwargs)
-            self.article_polish_lm = MyOpenAIModel(model='gpt-4-0125-preview',
-                                                   max_tokens=4000, **openai_kwargs)
-        else:
-            logging.warning('No valid OpenAI API provider is provided. Cannot use default LLM configurations.')
+        self.llm= dspy.HFModel(model = 'mistralai/Mistral-7B-Instruct-v0.2')
 
+
+
+        self.conv_simulator_lm = self.llm
+        self.question_asker_lm = self.llm
+        self.outline_gen_lm = self.llm
+        self.article_gen_lm = self.llm
+        self.article_polish_lm = self.llm
+
+   
     def set_conv_simulator_lm(self, model: Union[dspy.dsp.LM, dspy.dsp.HFModel]):
         self.conv_simulator_lm = model
 

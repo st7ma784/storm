@@ -10,16 +10,29 @@ from modules.utils import DialogueTurn, limit_word_count_preserve_newline, remov
 import dspy
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
+from langchain_community.utilities import GoogleSearchAPIWrapper
 
+os.environ["GOOGLE_CSE_ID"] = "03879df4495b8ecfd"
+os.environ["GOOGLE_API_KEY"] = "AIzaSyCYYNCl-jwpfXBI8zfCe5pDMJ9viviR6wo="
+search = GoogleSearchAPIWrapper()
+
+def top10_results(query):
+    return search.results(query, 10)
+     
+
+
+# goog_qa = RetrievalQA.from_chain_type(
+#     llm=ChatOpenAI(model=model), chain_type="map_reduce", retriever=GoogleRetriever()
+# )
 class MyYouRM(dspy.Retrieve):
     def __init__(self, ydc_api_key=None, k=3):
         super().__init__(k=k)
-        if not ydc_api_key and not os.environ.get("YDC_API_KEY"):
-            raise RuntimeError("You must supply ydc_api_key or set environment variable YDC_API_KEY")
-        elif ydc_api_key:
-            self.ydc_api_key = ydc_api_key
-        else:
-            self.ydc_api_key = os.environ["YDC_API_KEY"]
+        # if not ydc_api_key and not os.environ.get("YDC_API_KEY"):
+        #     raise RuntimeError("You must supply ydc_api_key or set environment variable YDC_API_KEY")
+        # elif ydc_api_key:
+        #     self.ydc_api_key = ydc_api_key
+        # else:
+        #     self.ydc_api_key = os.environ["YDC_API_KEY"]
 
         # The Wikipedia standard for sources.
         self.generally_unreliable = None
@@ -94,18 +107,18 @@ class MyYouRM(dspy.Retrieve):
         collected_results = []
         for query in queries:
             try:
-                headers = {"X-API-Key": self.ydc_api_key}
-                results = requests.get(
-                    f"https://api.ydc-index.io/search?query={query}",
-                    headers=headers,
-                ).json()
+            #     headers = {"X-API-Key": self.ydc_api_key}
+            #     results = requests.get(
+            #         f"https://api.ydc-index.io/search?query={query}",
+            #         headers=headers,
+            #     ).json()
 
-                authoritative_results = []
-                for r in results['hits']:
-                    if self.is_valid_wikipedia_source(r['url']):
-                        authoritative_results.append(r)
-                if 'hits' in results:
-                    collected_results.extend(authoritative_results[:self.k])
+                # authoritative_results = []
+                # for r in results['hits']:
+                #     if self.is_valid_wikipedia_source(r['url']):
+                #         authoritative_results.append(r)
+                # if 'hits' in results:
+                    collected_results.extend(search.results(query, 10))#authoritative_results[:self.k])
             except Exception as e:
                 logging.error(f'Error occurs when searching query {query}: {e}')
 

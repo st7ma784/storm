@@ -100,7 +100,7 @@ We set up the default LLM configuration in `LLMConfigs` in [src/modules/utils.py
 :bulb: **For a good practice,** 
 - choose a cheaper/faster model for `conv_simulator_lm` which is used to split queries, synthesize answers in the conversation.
 - if you need to conduct the actual writing step, choose a more powerful model for `article_gen_lm`. Based on our experiments, weak models are bad at generating text with citations.
-
+https://dspy-docs.vercel.app/docs/building-blocks/language_models
 
 ## Automatic Evaluation
 

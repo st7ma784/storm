@@ -23,21 +23,7 @@ from tqdm import tqdm
 def main(args):
     load_api_key()
     llm_configs = LLMConfigs()
-    llm_configs.init_openai_model(openai_api_key=os.getenv("OPENAI_API_KEY"), openai_type=os.getenv('OPENAI_API_TYPE'),
-                                  api_base=os.getenv('AZURE_API_BASE'), api_version=os.getenv('AZURE_API_VERSION'))
-
-    if args.engine == 'gpt-35-turbo':  # If args.engine == 'gpt4', use the default config.
-        if os.getenv("OPENAI_API_TYPE") and os.getenv("OPENAI_API_TYPE") == 'azure':
-            model_name = 'gpt-35-turbo-16k'
-        else:
-            model_name = 'gpt-3.5-turbo-16k'
-        llm_configs.set_outline_gen_lm(MyOpenAIModel(model=model_name, api_key=os.getenv("OPENAI_API_KEY"),
-                                                     api_provider=os.getenv("OPENAI_API_TYPE"),
-                                                     engine='gpt-35-turbo-16k',
-                                                     api_base=os.getenv("AZURE_API_BASE"),
-                                                     api_version=os.getenv("AZURE_API_VERSION"),
-                                                     max_tokens=400, temperature=1.0, top_p=0.9))
-
+    llm_configs.init()
     engine_args = DeepSearchRunnerArguments(
         output_dir=args.output_dir,
         max_conv_turn=args.max_conv_turn,
@@ -79,7 +65,7 @@ if __name__ == '__main__':
                         help='Maximum number of questions in conversational question asking.')
     parser.add_argument('--max-perspective', type=int, default=5,
                         help='Maximum number of perspectives to consider in perspective-guided question asking.')
-    parser.add_argument('--search-top-k', type=int, default=3,
+    parser.add_argument('--search-top-k', type=int, default=10,
                         help='Top k search results to consider for each search query.')
     parser.add_argument('--disable-perspective', action='store_true',
                         help='If True, disable perspective-guided question asking; set True only for ablation study.')
@@ -91,6 +77,5 @@ if __name__ == '__main__':
                         help='Using csv file to store topic and ground truth url at present.')
     parser.add_argument('--output-dir', type=str, default='../results',
                         help='Directory to store the outputs.')
-    parser.add_argument('--engine', type=str, required=True, choices=['gpt-4', 'gpt-35-turbo'])
 
     main(parser.parse_args())
